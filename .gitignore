@@ -1,0 +1,25 @@
+# Dependency directories
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+server/db/kspdb.db
+
+# OS & Editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

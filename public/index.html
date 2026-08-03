@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="KSPDB Power Grid Fault Detection & Localization — Real-time operator console for the Karnataka State Power Distribution Board">
+  <title>KSPDB — Power Grid Fault Monitor</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- App Styles -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Top Navigation Bar -->
+  <header class="top-bar" id="top-bar">
+    <div class="top-bar-left">
+      <div class="logo">
+        <span class="logo-icon">⚡</span>
+        <div class="logo-text">
+          <span class="logo-title">KSPDB</span>
+          <span class="logo-subtitle">Fault Detection System</span>
+        </div>
+      </div>
+    </div>
+    <div class="top-bar-center">
+      <div class="status-indicators">
+        <div class="status-chip" id="status-connection">
+          <span class="status-dot dot-connecting"></span>
+          <span>Connecting...</span>
+        </div>
+        <div class="status-chip" id="status-poles">
+          <span class="status-dot dot-ok"></span>
+          <span id="stat-poles-live">--</span> Live
+        </div>
+        <div class="status-chip" id="status-dark">
+          <span class="status-dot dot-warning"></span>
+          <span id="stat-poles-dark">0</span> Dark
+        </div>
+        <div class="status-chip status-chip-alert" id="status-tickets">
+          <span id="stat-active-tickets">0</span> Active Tickets
+        </div>
+      </div>
+    </div>
+    <div class="top-bar-right">
+      <button class="btn btn-ghost" id="btn-toggle-simulator" title="Toggle Simulator Panel">
+        🧪 Simulator
+      </button>
+      <div class="clock" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <main class="main-layout">
+    <!-- Left Panel: Ticket List -->
+    <aside class="panel panel-tickets" id="panel-tickets">
+      <div class="panel-header">
+        <h2>Active Incidents</h2>
+        <div class="panel-actions">
+          <select id="filter-status" class="select-mini">
+            <option value="active">Active</option>
+            <option value="detected">Detected</option>
+            <option value="acknowledged">Acknowledged</option>
+            <option value="crew_assigned">Crew Assigned</option>
+            <option value="resolved">Resolved</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+      </div>
+      <div class="ticket-list" id="ticket-list">
+        <div class="empty-state" id="empty-tickets">
+          <span class="empty-icon">✅</span>
+          <p>No active incidents</p>
+          <small>All systems operational</small>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center: Map -->
+    <section class="panel panel-map">
+      <div id="map"></div>
+      <div class="map-legend" id="map-legend">
+        <div class="legend-title">Pole Status</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span> Energized</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Dark (Outage)</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#6b7280"></span> No Device</div>
+        <div class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Sensor Issue</div>
+        <div class="legend-item"><span class="legend-dot dot-boundary"></span> Fault Boundary</div>
+      </div>
+    </section>
+
+    <!-- Right Panel: Detail / Simulator -->
+    <aside class="panel panel-detail" id="panel-detail">
+      <!-- Ticket Detail View (shown when a ticket is selected) -->
+      <div id="detail-view" class="detail-view hidden">
+        <div class="panel-header">
+          <h2 id="detail-ticket-id">Ticket Detail</h2>
+          <button class="btn btn-ghost btn-sm" id="btn-close-detail">✕</button>
+        </div>
+        <div class="detail-content" id="detail-content"></div>
+      </div>
+
+      <!-- Simulator Panel -->
+      <div id="simulator-panel" class="simulator-panel">
+        <div class="panel-header">
+          <h2>🧪 Fault Simulator</h2>
+        </div>
+        <div class="simulator-content">
+          <div class="sim-section">
+            <h3>Inject Fault</h3>
+            <div class="sim-field">
+              <label>Fault Type</label>
+              <select id="sim-fault-type" class="select-full">
+                <option value="span">Span Fault (wire break)</option>
+                <option value="dt">DT Fault (transformer)</option>
+                <option value="feeder">Feeder Fault (11kV)</option>
+              </select>
+            </div>
+            <div class="sim-field">
+              <label>Target</label>
+              <select id="sim-target" class="select-full">
+                <option value="">Loading targets...</option>
+              </select>
+            </div>
+            <button class="btn btn-danger btn-full" id="btn-inject-fault">
+              ⚡ Inject Fault
+            </button>
+          </div>
+
+          <div class="sim-section">
+            <h3>Noise Injection</h3>
+            <button class="btn btn-warning btn-full" id="btn-dead-sensor">
+              📡 Kill a Random Sensor
+            </button>
+          </div>
+
+          <div class="sim-section">
+            <h3>Scheduled Outage</h3>
+            <div class="sim-field">
+              <label>Scope</label>
+              <select id="sim-outage-scope" class="select-full">
+                <option value="dt">Distribution Transformer</option>
+                <option value="feeder">Feeder</option>
+              </select>
+            </div>
+            <div class="sim-field">
+              <label>Target</label>
+              <select id="sim-outage-target" class="select-full">
+                <option value="">Select target...</option>
+              </select>
+            </div>
+            <button class="btn btn-secondary btn-full" id="btn-schedule-outage">
+              📅 Create Scheduled Outage
+            </button>
+          </div>
+
+          <div class="sim-section">
+            <h3>Active Simulated Faults</h3>
+            <div id="sim-active-faults" class="sim-fault-list">
+              <div class="empty-state-mini">No active faults</div>
+            </div>
+          </div>
+
+          <div class="sim-section">
+            <button class="btn btn-ghost btn-full" id="btn-reset-sim">
+              🔄 Reset Everything
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/js/app.js"></script>
+</body>
+</html>
