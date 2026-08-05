@@ -12,8 +12,8 @@ A real-time IoT power grid monitoring system that ingests telemetry from 35,000+
 Requires only **Docker** and **Docker Compose**:
 
 ```bash
-git clone https://github.com/your-username/kspdb-fault-localization.git
-cd kspdb-fault-localization
+git clone https://github.com/AyaanRukadikar/kspdb-propel-assignment.git
+cd kspdb-propel-assignment
 docker compose up --build
 ```
 
